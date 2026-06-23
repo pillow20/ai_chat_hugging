@@ -33,18 +33,18 @@ class _ChatScreenState extends State<ChatScreen> {
   );
 
   double _temperature = 0.7;
-  int _maxTokens = 4000; // По умолчанию 4000, максимум теперь 8000
+  int _maxTokens = 4000;
   bool _isLoading = false;
   bool _autoFocus = true;
 
+  // FIX: Список моделей Hugging Face (OpenAI-совместимый формат)
   final List<Map<String, String>> _models = [
-    {'name': 'GPT OSS 120B (Free)', 'id': 'openai/gpt-oss-120b:free'},
-    {'name': 'Gemma 4 31B (Free)', 'id': 'google/gemma-4-31b-it:free'},
-    {'name': 'Free Models (Free)', 'id': 'openrouter/free'},
-    {'name': 'Nvidia Nemotron 3 (Free)', 'id': 'nvidia/nemotron-3-nano-30b-a3b:free'},
-    {'name': 'Meta Llama 3.3 70B', 'id': 'meta-llama/llama-3.3-70b-instruct:free'},
-    {'name': 'Qwen3 Next 80B', 'id': 'qwen/qwen3-next-80b-a3b-instruct:free'},
-    {'name': 'Poolside Laguna M1', 'id': 'poolside/laguna-m.1:free'},
+    {'name': 'Meta Llama 3.3 70B', 'id': 'meta-llama/Llama-3.3-70B-Instruct'},
+    {'name': 'Qwen 2.5 72B', 'id': 'Qwen/Qwen2.5-72B-Instruct'},
+    {'name': 'Mistral Large 2', 'id': 'mistralai/Mistral-Large-Instruct-2411'},
+    {'name': 'DeepSeek R1 Distill 70B', 'id': 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B'},
+    {'name': 'Gemma 2 27B', 'id': 'google/gemma-2-27b-it'},
+    {'name': 'Phi-4', 'id': 'microsoft/Phi-4'},
   ];
 
   late String _selectedModel;
@@ -68,7 +68,8 @@ class _ChatScreenState extends State<ChatScreen> {
           backgroundColor: const Color(0xFFCF6679),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          content: const Text('Введите OpenRouter API ключ', style: TextStyle(color: Colors.white)),
+          // FIX: Текст подсказки под Hugging Face
+          content: const Text('Введите Hugging Face Token', style: TextStyle(color: Colors.white)),
         ),
       );
       return;
@@ -88,18 +89,17 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       apiMessages.addAll(_messages.map((m) => {'role': m['role'], 'content': m['content']}).toList());
 
+      // FIX: URL и заголовки для Hugging Face Inference API
       final response = await http.post(
-        Uri.parse('https://openrouter.ai/api/v1/chat/completions'),
+        Uri.parse('https://router.huggingface.co/v1/chat/completions'),
         headers: {
           'Authorization': 'Bearer $apiKey',
           'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://localhost',
-          'X-Title': 'Flutter Chat Bot',
         },
         body: jsonEncode({
           'model': _selectedModel,
           'temperature': _temperature,
-          'max_tokens': _maxTokens, // Передаем лимит токенов в API
+          'max_tokens': _maxTokens,
           'messages': apiMessages,
         }),
       );
@@ -241,8 +241,9 @@ class _ChatScreenState extends State<ChatScreen> {
                   TextField(
                     controller: _apiKeyController,
                     obscureText: true,
+                    // FIX: Label под Hugging Face
                     decoration: const InputDecoration(
-                      labelText: 'OpenRouter API Key',
+                      labelText: 'Hugging Face Token',
                       prefixIcon: Icon(Icons.key_rounded, size: 20),
                     ),
                   ),
@@ -258,7 +259,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   ),
                   const SizedBox(height: 14),
                   
-                  // 1. Модель и Креативность в одну строку
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
@@ -313,7 +313,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   
                   const SizedBox(height: 16),
                   
-                  // 2. Ползунок длины ответа СТРОГО ПОД креативностью (на всю ширину)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -327,8 +326,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       Slider(
                         value: _maxTokens.toDouble(),
                         min: 500.0,
-                        max: 8000.0, // <-- ИЗМЕНЕНО НА 8000
-                        divisions: 75, // Шаги по 100 токенов
+                        max: 8000.0,
+                        divisions: 75,
                         activeColor: const Color(0xFF9D4EDD),
                         inactiveColor: const Color(0xFF2C2C35),
                         onChanged: (v) => setState(() => _maxTokens = v.toInt()),
@@ -338,7 +337,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
                   const SizedBox(height: 16),
                   
-                  // 3. Переключатель автофокуса
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
