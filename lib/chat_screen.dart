@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'dart:convert'; 
+import 'dart:convert';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:html' as html;
-import 'widgets/code_block_builder.dart'; 
+import 'widgets/code_block_builder.dart';
 
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
@@ -37,7 +37,6 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _isLoading = false;
   bool _autoFocus = true;
 
-  // FIX: Список моделей Hugging Face (OpenAI-совместимый формат)
   final List<Map<String, String>> _models = [
     {'name': 'Meta Llama 3.3 70B', 'id': 'meta-llama/Llama-3.3-70B-Instruct'},
     {'name': 'Qwen 2.5 72B', 'id': 'Qwen/Qwen2.5-72B-Instruct'},
@@ -68,7 +67,6 @@ class _ChatScreenState extends State<ChatScreen> {
           backgroundColor: const Color(0xFFCF6679),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-          // FIX: Текст подсказки под Hugging Face
           content: const Text('Введите Hugging Face Token', style: TextStyle(color: Colors.white)),
         ),
       );
@@ -89,7 +87,6 @@ class _ChatScreenState extends State<ChatScreen> {
       }
       apiMessages.addAll(_messages.map((m) => {'role': m['role'], 'content': m['content']}).toList());
 
-      // FIX: URL и заголовки для Hugging Face Inference API
       final response = await http.post(
         Uri.parse('https://router.huggingface.co/v1/chat/completions'),
         headers: {
@@ -112,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final errorData = jsonDecode(response.body);
         setState(() => _messages.add({
               'role': 'assistant',
-              'content': 'Ошибка: ${response.statusCode}\n${errorData['error']?['message'] ?? response.body}'
+              content': 'Ошибка: ${response.statusCode}\n${errorData['error']?['message'] ?? response.body}'
             }));
       }
     } catch (e) {
@@ -148,6 +145,186 @@ class _ChatScreenState extends State<ChatScreen> {
     super.dispose();
   }
 
+  void _openSettings() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1B263B),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.only(
+            bottom: MediaQuery.of(context).viewInsets.bottom + 20,
+            left: 20,
+            right: 20,
+            top: 20,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE9B824).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(Icons.tune, color: Color(0xFFE9B824), size: 20),
+                        ),
+                        const SizedBox(width: 10),
+                        const Text('Настройки', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close, color: Colors.white54),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Text('Hugging Face Token', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _apiKeyController,
+                  obscureText: true,
+                  decoration: const InputDecoration(
+                    hintText: 'Введите токен...',
+                    prefixIcon: Icon(Icons.key_rounded, size: 20, color: Color(0xFFE9B824)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Системный промпт', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _systemPromptController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Например: "Ты опытный разработчик..."',
+                    prefixIcon: Icon(Icons.psychology_rounded, size: 20, color: Color(0xFFE9B824)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text('Модель', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: _selectedModel,
+                  isExpanded: true,
+                  dropdownColor: const Color(0xFF1B263B),
+                  decoration: const InputDecoration(
+                    labelText: 'Выберите модель',
+                    prefixIcon: Icon(Icons.model_training, size: 20, color: Color(0xFFE9B824)),
+                  ),
+                  items: _models
+                      .map((m) => DropdownMenuItem<String>(
+                            value: m['id'],
+                            child: Text(m['name']!, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
+                          ))
+                      .toList(),
+                  onChanged: (v) {
+                    if (v != null) {
+                      setModalState(() => _selectedModel = v);
+                      setState(() => _selectedModel = v);
+                    }
+                  },
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Креативность', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(_temperature.toStringAsFixed(1), style: const TextStyle(color: Color(0xFFE9B824), fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: const Color(0xFFE9B824),
+                    inactiveTrackColor: const Color(0xFF2A3F5F),
+                    thumbColor: const Color(0xFFE9B824),
+                    overlayColor: const Color(0xFFE9B824).withOpacity(0.2),
+                  ),
+                  child: Slider(
+                    value: _temperature,
+                    min: 0.0,
+                    max: 2.0,
+                    divisions: 20,
+                    onChanged: (v) {
+                      setModalState(() => _temperature = v);
+                      setState(() => _temperature = v);
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Длина ответа (макс. токенов)', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text('$_maxTokens', style: const TextStyle(color: Color(0xFFE9B824), fontWeight: FontWeight.bold, fontSize: 14)),
+                  ],
+                ),
+                SliderTheme(
+                  data: SliderTheme.of(context).copyWith(
+                    activeTrackColor: const Color(0xFFE9B824),
+                    inactiveTrackColor: const Color(0xFF2A3F5F),
+                    thumbColor: const Color(0xFFE9B824),
+                    overlayColor: const Color(0xFFE9B824).withOpacity(0.2),
+                  ),
+                  child: Slider(
+                    value: _maxTokens.toDouble(),
+                    min: 500.0,
+                    max: 8000.0,
+                    divisions: 75,
+                    onChanged: (v) {
+                      setModalState(() => _maxTokens = v.toInt());
+                      setState(() => _maxTokens = v.toInt());
+                    },
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Автофокус на поле ввода', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                    Switch(
+                      value: _autoFocus,
+                      activeColor: const Color(0xFFE9B824),
+                      onChanged: (value) {
+                        setModalState(() => _autoFocus = value);
+                        setState(() => _autoFocus = value);
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFE9B824),
+                      foregroundColor: const Color(0xFF0D1B2A),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Сохранить', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+                const SizedBox(height: 20),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -157,25 +334,32 @@ class _ChatScreenState extends State<ChatScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFF9D4EDD).withOpacity(0.15),
+                color: const Color(0xFFE9B824).withOpacity(0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.auto_awesome, color: Color(0xFFB56576), size: 20),
+              child: const Icon(Icons.auto_awesome, color: Color(0xFFE9B824), size: 20),
             ),
             const SizedBox(width: 12),
-            const Text('AI HUB Chat', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
+            const Text('AI Chat Hugging', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, letterSpacing: 0.3)),
           ],
         ),
         elevation: 0,
-        backgroundColor: const Color(0xFF161618),
+        backgroundColor: const Color(0xFF0D1B2A),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Color(0xFFE9B824), size: 24),
+            tooltip: 'Настройки',
+            onPressed: _openSettings,
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(1),
-          child: Container(color: const Color(0xFF242427), height: 1),
+          child: Container(color: const Color(0xFF2A3F5F), height: 1),
         ),
       ),
       body: Column(
         children: [
-          _buildSettingsPanel(),
           Expanded(
             child: _messages.isEmpty
                 ? Center(
@@ -184,10 +368,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       children: [
                         Icon(Icons.chat_bubble_outline_rounded, size: 48, color: Colors.grey.withOpacity(0.4)),
                         const SizedBox(height: 16),
-                        Text(
-                          'Начните диалог с нейросетью...',
-                          style: TextStyle(color: Colors.grey.withOpacity(0.6), fontSize: 15),
-                        ),
+                        Text('Начните диалог с нейросетью...', style: TextStyle(color: Colors.grey.withOpacity(0.6), fontSize: 15)),
                       ],
                     ),
                   )
@@ -201,161 +382,12 @@ class _ChatScreenState extends State<ChatScreen> {
           if (_isLoading)
             const LinearProgressIndicator(
               backgroundColor: Colors.transparent,
-              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF9D4EDD)),
+              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFFE9B824)),
               minHeight: 2,
             ),
           _buildInputPanel(),
           _buildFooter(),
         ],
-      ),
-    );
-  }
-
-  Widget _buildSettingsPanel() {
-    return Theme(
-      data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFF161618),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: const Color(0xFF242427), width: 1),
-        ),
-        child: ExpansionTile(
-          iconColor: const Color(0xFF9D4EDD),
-          collapsedIconColor: Colors.grey,
-          title: const Row(
-            children: [
-              Icon(Icons.tune, size: 18, color: Colors.grey),
-              SizedBox(width: 10),
-              Text('Параметры конфигурации', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.white70)),
-            ],
-          ),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
-              child: Column(
-                children: [
-                  const Divider(color: Color(0xFF242427), height: 1, thickness: 1),
-                  const SizedBox(height: 16),
-                  TextField(
-                    controller: _apiKeyController,
-                    obscureText: true,
-                    // FIX: Label под Hugging Face
-                    decoration: const InputDecoration(
-                      labelText: 'Hugging Face Token',
-                      prefixIcon: Icon(Icons.key_rounded, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: _systemPromptController,
-                    maxLines: 2,
-                    decoration: const InputDecoration(
-                      labelText: 'Системный промпт (необязательно)',
-                      hintText: 'Например: "Ты опытный разработчик..."',
-                      prefixIcon: Icon(Icons.psychology_rounded, size: 20),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: DropdownButtonFormField<String>(
-                          value: _selectedModel,
-                          isExpanded: true,
-                          alignment: Alignment.bottomCenter,
-                          dropdownColor: const Color(0xFF1E1E22),
-                          decoration: const InputDecoration(
-                            labelText: 'Модель',
-                            contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                          ),
-                          items: _models
-                              .map((m) => DropdownMenuItem<String>(
-                                    value: m['id'],
-                                    child: Text(m['name']!, style: const TextStyle(fontSize: 14), overflow: TextOverflow.ellipsis),
-                                  ))
-                              .toList(),
-                          onChanged: (v) {
-                            if (v != null) setState(() => _selectedModel = v);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Креативность', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                                Text('${_temperature.toStringAsFixed(1)}', style: const TextStyle(fontSize: 12, color: Color(0xFF9D4EDD), fontWeight: FontWeight.bold)),
-                              ],
-                            ),
-                            Slider(
-                              value: _temperature,
-                              min: 0.0,
-                              max: 2.0,
-                              divisions: 20,
-                              activeColor: const Color(0xFF9D4EDD),
-                              inactiveColor: const Color(0xFF2C2C35),
-                              onChanged: (v) => setState(() => _temperature = v),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  
-                  const SizedBox(height: 16),
-                  
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Длина ответа (макс. токенов)', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                          Text('$_maxTokens', style: const TextStyle(fontSize: 12, color: Color(0xFF9D4EDD), fontWeight: FontWeight.bold)),
-                        ],
-                      ),
-                      Slider(
-                        value: _maxTokens.toDouble(),
-                        min: 500.0,
-                        max: 8000.0,
-                        divisions: 75,
-                        activeColor: const Color(0xFF9D4EDD),
-                        inactiveColor: const Color(0xFF2C2C35),
-                        onChanged: (v) => setState(() => _maxTokens = v.toInt()),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 16),
-                  
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        'Автофокус на поле ввода',
-                        style: TextStyle(fontSize: 13, color: Colors.white70),
-                      ),
-                      Switch(
-                        value: _autoFocus,
-                        activeColor: const Color(0xFF9D4EDD),
-                        onChanged: (value) => setState(() => _autoFocus = value),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -373,11 +405,11 @@ class _ChatScreenState extends State<ChatScreen> {
               margin: const EdgeInsets.only(top: 4, right: 8),
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: const Color(0xFF161618),
+                color: const Color(0xFF1B263B),
                 shape: BoxShape.circle,
-                border: Border.all(color: const Color(0xFF242427)),
+                border: Border.all(color: const Color(0xFF2A3F5F)),
               ),
-              child: const Icon(Icons.smart_toy_outlined, size: 16, color: Color(0xFF9D4EDD)),
+              child: const Icon(Icons.smart_toy_outlined, size: 16, color: Color(0xFFE9B824)),
             ),
           ],
           Flexible(
@@ -385,7 +417,14 @@ class _ChatScreenState extends State<ChatScreen> {
               padding: const EdgeInsets.all(12),
               constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
               decoration: BoxDecoration(
-                color: isUser ? const Color(0xFF3A1C71) : const Color(0xFF161618),
+                gradient: isUser
+                    ? const LinearGradient(
+                        colors: [Color(0xFF1E3A5F), Color(0xFF2C5282)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      )
+                    : null,
+                color: isUser ? null : const Color(0xFF1B263B),
                 borderRadius: BorderRadius.only(
                   topLeft: const Radius.circular(16),
                   topRight: const Radius.circular(16),
@@ -393,15 +432,11 @@ class _ChatScreenState extends State<ChatScreen> {
                   bottomRight: isUser ? Radius.zero : const Radius.circular(16),
                 ),
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 5,
-                    offset: const Offset(0, 2),
-                  )
+                  BoxShadow(color: Colors.black.withOpacity(0.2), blurRadius: 5, offset: const Offset(0, 2))
                 ],
-                border: isUser 
-                    ? Border.all(color: const Color(0xFF502799).withOpacity(0.5))
-                    : Border.all(color: const Color(0xFF242427)),
+                border: isUser
+                    ? Border.all(color: const Color(0xFF3B6BA5).withOpacity(0.5))
+                    : Border.all(color: const Color(0xFF2A3F5F)),
               ),
               child: isUser
                   ? Text(msg['content']!, style: const TextStyle(color: Color(0xFFF5F5F7), fontSize: 15, height: 1.35))
@@ -412,9 +447,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           data: msg['content']!,
                           selectable: true,
                           onTapLink: (text, href, title) {
-                            if (href != null) {
-                              html.window.open(href, '_blank');
-                            }
+                            if (href != null) html.window.open(href, '_blank');
                           },
                           builders: {
                             'pre': CodeBlockBuilder(
@@ -425,19 +458,19 @@ class _ChatScreenState extends State<ChatScreen> {
                           styleSheet: MarkdownStyleSheet(
                             p: const TextStyle(color: Color(0xFFE4E4E7), fontSize: 15, height: 1.45),
                             code: const TextStyle(
-                              backgroundColor: Color(0xFF28282B), 
+                              backgroundColor: Color(0xFF0D1B2A),
                               fontFamily: 'monospace',
                               fontSize: 13,
-                              color: Color(0xFFF43F5E),
+                              color: Color(0xFFE9B824),
                             ),
-                            a: const TextStyle(color: Color(0xFF9D4EDD), decoration: TextDecoration.underline),
-                            listBullet: const TextStyle(color: Color(0xFF9D4EDD)),
+                            a: const TextStyle(color: Color(0xFFE9B824), decoration: TextDecoration.underline),
+                            listBullet: const TextStyle(color: Color(0xFFE9B824)),
                             blockquoteDecoration: BoxDecoration(
-                              color: const Color(0xFF3E2723),
-                              border: const Border(left: BorderSide(color: Color(0xFF9D4EDD), width: 4)),
+                              color: const Color(0xFF0D1B2A),
+                              border: const Border(left: BorderSide(color: Color(0xFFE9B824), width: 4)),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            blockquote: const TextStyle(color: Colors.yellow, fontStyle: FontStyle.italic),
+                            blockquote: const TextStyle(color: Color(0xFFE9B824), fontStyle: FontStyle.italic),
                           ),
                         ),
                         const SizedBox(height: 8),
@@ -470,7 +503,7 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget _buildInputPanel() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
-      color: const Color(0xFF0B0B0C),
+      color: const Color(0xFF0D1B2A),
       child: SafeArea(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.end,
@@ -493,11 +526,11 @@ class _ChatScreenState extends State<ChatScreen> {
             const SizedBox(width: 10),
             Container(
               decoration: const BoxDecoration(
-                color: Color(0xFF9D4EDD),
+                color: Color(0xFFE9B824),
                 shape: BoxShape.circle,
               ),
               child: IconButton(
-                icon: const Icon(Icons.arrow_upward_rounded, color: Colors.white, size: 22),
+                icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF0D1B2A), size: 22),
                 onPressed: _isLoading ? null : _sendMessage,
               ),
             ),
@@ -512,8 +545,8 @@ class _ChatScreenState extends State<ChatScreen> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 8),
       decoration: const BoxDecoration(
-        color: Color(0xFF0B0B0C),
-        border: Border(top: BorderSide(color: Color(0xFF161618), width: 1)),
+        color: Color(0xFF0D1B2A),
+        border: Border(top: BorderSide(color: Color(0xFF1B263B), width: 1)),
       ),
       child: const Center(
         child: Text(
@@ -545,10 +578,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
       html.Url.revokeObjectUrl(url);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          behavior: SnackBarBehavior.floating,
-          content: Text('Файл $filename успешно скачан'),
-        ),
+        SnackBar(behavior: SnackBarBehavior.floating, content: Text('Файл $filename успешно скачан')),
       );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка скачивания: $e')));
@@ -561,11 +591,11 @@ class _ChatScreenState extends State<ChatScreen> {
       SnackBar(
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        backgroundColor: const Color(0xFF1E1E22),
+        backgroundColor: const Color(0xFF1B263B),
         duration: const Duration(seconds: 2),
         content: const Row(
           children: [
-            Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
+            Icon(Icons.check_circle_outline, color: Color(0xFFE9B824), size: 20),
             SizedBox(width: 10),
             Text('Скопировано в буфер обмена', style: TextStyle(color: Colors.white70)),
           ],
