@@ -109,7 +109,7 @@ class _ChatScreenState extends State<ChatScreen> {
         final errorData = jsonDecode(response.body);
         setState(() => _messages.add({
               'role': 'assistant',
-              content': 'Ошибка: ${response.statusCode}\n${errorData['error']?['message'] ?? response.body}'
+              'content': 'Ошибка: ${response.statusCode}\n${errorData['error']?['message'] ?? response.body}'
             }));
       }
     } catch (e) {
