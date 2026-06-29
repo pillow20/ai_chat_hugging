@@ -38,7 +38,7 @@ class _ChatScreenState extends State<ChatScreen> {
   bool _autoFocus = true;
 
   final List<Map<String, String>> _models = [
-    {'name': 'Meta Llama 3.3 70B', 'id': 'meta-llama/Llama-3.3-70B-Instruct'},
+    {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash'},
     {'name': 'Qwen 2.5 72B', 'id': 'Qwen/Qwen2.5-72B-Instruct'},
     {'name': 'Mistral Large 2', 'id': 'mistralai/Mistral-Large-Instruct-2411'},
     {'name': 'DeepSeek R1 Distill 70B', 'id': 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B'},
