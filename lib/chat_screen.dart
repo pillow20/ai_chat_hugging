@@ -39,7 +39,7 @@ class _ChatScreenState extends State<ChatScreen> {
 
   final List<Map<String, String>> _models = [
     {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash'},
-    {'name': 'Qwen 2.5 72B', 'id': 'Qwen/Qwen2.5-72B-Instruct'},
+    {'name': 'zai-GLM-5.2-FP8', 'id': 'zai-org/GLM-5.2-FP8'},
     {'name': 'Mistral Large 2', 'id': 'mistralai/Mistral-Large-Instruct-2411'},
     {'name': 'DeepSeek R1 Distill 70B', 'id': 'deepseek-ai/DeepSeek-R1-Distill-Llama-70B'},
     {'name': 'Gemma 2 27B', 'id': 'google/gemma-2-27b-it'},
