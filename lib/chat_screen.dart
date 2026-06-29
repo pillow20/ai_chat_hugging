@@ -40,7 +40,7 @@ class _ChatScreenState extends State<ChatScreen> {
   final List<Map<String, String>> _models = [
     {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash:deepinfra'},
     {'name': 'Llama 3.1 8B (Ультра-бюджет)', 'id': 'meta-llama/Llama-3.1-8B-Instruct:cheapest'},
-    {'name': 'Gemma 4 26B (Google Логика)', 'id': 'google/gemma-4-26b-it:deepinfra'},
+    {'name': 'Gemma 4 26B (Google Логика)', 'id': 'google/gemma-4-26b-it:cheapest'},
     {'name': 'Qwen 3.5 27B (Для кода)', 'id': 'Qwen/Qwen3.5-27B:cheapest'},
     {'name': 'Qwen 3.6 35B MoE (Быстрая)', 'id': 'Qwen/Qwen3.6-35B-A3B:cheapest'},
     {'name': 'Phi-4 (Сверхдешевый интеллект от MS)', 'id': 'microsoft/phi-4:cheapest'},
