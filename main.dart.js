@@ -94005,7 +94005,7 @@ M(a){var s=null
 return new A.B_(B.Ea,"AI Chat Hugging",A.vS(B.an,B.c5,B.Ek,B.cO,A.aFy(new A.hc(4,A.eR(12),B.n),s,s,new A.hc(4,A.eR(12),B.BC),B.c5,!0,new A.hc(4,A.eR(12),B.BG),B.U2),B.cp,s),!1,s)}}
 A.yE.prototype={
 an(){var s=$.aB(),r=t.N,q=t.m0
-return new A.EW(new A.rg(B.il,s),new A.rg(B.il,s),new A.rg(B.il,s),A.vh(0),A.b([A.am(["name","Meta Llama 3.3 70B","id","meta-llama/Llama-3.3-70B-Instruct"],r,r),A.am(["name","Qwen 2.5 72B","id","Qwen/Qwen2.5-72B-Instruct"],r,r),A.am(["name","Mistral Large 2","id","mistralai/Mistral-Large-Instruct-2411"],r,r),A.am(["name","DeepSeek R1 Distill 70B","id","deepseek-ai/DeepSeek-R1-Distill-Llama-70B"],r,r),A.am(["name","Gemma 2 27B","id","google/gemma-2-27b-it"],r,r),A.am(["name","Phi-4","id","microsoft/Phi-4"],r,r)],q),A.b([],q))}}
+return new A.EW(new A.rg(B.il,s),new A.rg(B.il,s),new A.rg(B.il,s),A.vh(0),A.b([A.am(["name","DeepSeek-4V-flash","id","deepseek-ai/DeepSeek-V4-Flash"],r,r),A.am(["name","Qwen 2.5 72B","id","Qwen/Qwen2.5-72B-Instruct"],r,r),A.am(["name","Mistral Large 2","id","mistralai/Mistral-Large-Instruct-2411"],r,r),A.am(["name","DeepSeek R1 Distill 70B","id","deepseek-ai/DeepSeek-R1-Distill-Llama-70B"],r,r),A.am(["name","Gemma 2 27B","id","google/gemma-2-27b-it"],r,r),A.am(["name","Phi-4","id","microsoft/Phi-4"],r,r)],q),A.b([],q))}}
 A.EW.prototype={
 gG9(){var s=this.w
 return s===$?this.w=A.ld(!0,null,!0,!0,null,new A.aoz(this),!1):s},
