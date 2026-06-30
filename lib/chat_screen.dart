@@ -129,7 +129,6 @@ class _ChatScreenState extends State<ChatScreen> {
 
     // === ЛОГИКА СУММАРИЗАЦИИ ===
     if (_messages.length > 15) {
-      // Проверяем, не было ли недавней неудачи суммаризации
       final shouldTrySummary = _lastSummaryFailureIndex == -1 ||
           (_messages.length - _lastSummaryFailureIndex) >= 10;
 
@@ -278,6 +277,17 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Введите токен...',
                     prefixIcon: Icon(Icons.key_rounded, size: 20, color: Color(0xFFE9B824)),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text('Системный промпт', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _systemPromptController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'Например: "Ты опытный разработчик..."',
+                    prefixIcon: Icon(Icons.psychology_rounded, size: 20, color: Color(0xFFE9B824)),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -574,66 +584,33 @@ class _ChatScreenState extends State<ChatScreen> {
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       color: const Color(0xFF0D1B2A),
       child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _messageController,
-                    focusNode: _messageFocusNode,
-                    minLines: 1,
-                    maxLines: 6,
-                    keyboardType: TextInputType.multiline,
-                    textInputAction: TextInputAction.newline,
-                    style: const TextStyle(fontSize: 15),
-                    decoration: const InputDecoration(
-                      hintText: 'Задайте вопрос... (Enter отправляет, Shift+Enter переносит)',
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    ),
-                  ),
+            Expanded(
+              child: TextField(
+                controller: _messageController,
+                focusNode: _messageFocusNode,
+                minLines: 1,
+                maxLines: 6,
+                keyboardType: TextInputType.multiline,
+                textInputAction: TextInputAction.newline,
+                style: const TextStyle(fontSize: 15),
+                decoration: const InputDecoration(
+                  hintText: 'Задайте вопрос... (Enter отправляет, Shift+Enter переносит)',
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 ),
-                const SizedBox(width: 10),
-                Container(
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFE9B824),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF0D1B2A), size: 22),
-                    onPressed: _isLoading ? null : _sendMessage,
-                  ),
-                ),
-              ],
+              ),
             ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _systemPromptController,
-              maxLines: 2,
-              minLines: 1,
-              style: const TextStyle(fontSize: 13, color: Colors.white70),
-              decoration: const InputDecoration(
-                hintText: 'Системный промпт...',
-                hintStyle: TextStyle(color: Colors.white30),
-                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                prefixIcon: Icon(Icons.psychology_rounded, size: 18, color: Color(0xFFE9B824)),
-                isDense: true,
-                filled: true,
-                fillColor: Color(0xFF1B263B),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: Color(0xFF2A3F5F)),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: Color(0xFF2A3F5F)),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(12)),
-                  borderSide: BorderSide(color: Color(0xFFE9B824)),
-                ),
+            const SizedBox(width: 10),
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFFE9B824),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF0D1B2A), size: 22),
+                onPressed: _isLoading ? null : _sendMessage,
               ),
             ),
           ],
