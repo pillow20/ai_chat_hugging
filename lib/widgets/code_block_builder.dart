@@ -1,10 +1,3 @@
-// Кастомный билдер для отображения блоков кода в Markdown
-// Добавляет заголовок с языком, кнопки копирования и скачивания файла
-// Зависимости:
-// - flutter/material.dart (базовые виджеты и иконки)
-// - flutter_markdown (базовый класс MarkdownElementBuilder)
-// - markdown (парсинг AST элементов Markdown)
-
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:markdown/markdown.dart' as md;
@@ -15,15 +8,74 @@ class CodeBlockBuilder extends MarkdownElementBuilder {
 
   CodeBlockBuilder({required this.onDownload, required this.onCopy});
 
+  String _detectLanguage(String code) {
+    final c = code.toLowerCase();
+    
+    // Dart
+    if (c.contains('void main(') || c.contains('widget build(') || 
+        c.contains('buildcontext') || c.contains('setstate(')) return 'dart';
+    
+    // Python
+    if (c.contains('def ') || c.contains('import ') || c.contains('print(') || 
+        c.contains('self.') || c.contains('if __name__')) return 'python';
+    
+    // JavaScript / TypeScript
+    if (c.contains('const ') || c.contains('let ') || c.contains('=>') || 
+        c.contains('console.log') || c.contains('document.')) return 'javascript';
+    
+    // HTML
+    if (c.contains('<!doctype') || c.contains('<html') || c.contains('<div') || 
+        c.contains('<body')) return 'html';
+    
+    // CSS
+    if (c.contains('@media') || RegExp(r'\.[\w-]+\s*\{').hasMatch(code)) return 'css';
+    
+    // Java
+    if (c.contains('public class') || c.contains('public static void main') || 
+        c.contains('system.out.println')) return 'java';
+    
+    // C++
+    if (c.contains('#include') && (c.contains('cout') || c.contains('std::'))) return 'cpp';
+    
+    // C
+    if (c.contains('#include') && c.contains('printf')) return 'c';
+    
+    // C#
+    if (c.contains('using system') || c.contains('namespace ') || 
+        c.contains('console.writeline')) return 'csharp';
+    
+    // Go
+    if (c.contains('package ') && c.contains('func main')) return 'go';
+    
+    // SQL
+    if (RegExp(r'\b(select|insert|update|delete|create table)\b').hasMatch(c)) return 'sql';
+    
+    // Bash
+    if (c.startswith('#!/bin') || c.contains('\$1') || c.contains('echo ')) return 'bash';
+    
+    // PHP
+    if (c.contains('<?php')) return 'php';
+    
+    // Rust
+    if (c.contains('fn main') && c.contains('println!')) return 'rust';
+    
+    // JSON
+    if (code.trim().startsWith('{') || code.trim().startsWith('[')) return 'json';
+    
+    return 'text';
+  }
+
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final code = element.textContent.trimRight();
     String lang = 'code';
     
-    // Извлечение названия языка программирования из class="language-..."
     final cls = element.attributes['class'];
     if (cls != null && cls.startsWith('language-')) {
       lang = cls.substring(9);
+    } else {
+      // Автоопределение если язык не указан
+      lang = _detectLanguage(code);
     }
 
     return Container(
@@ -36,7 +88,6 @@ class CodeBlockBuilder extends MarkdownElementBuilder {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Шапка блока кода с названием языка и кнопками действий
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
             decoration: const BoxDecoration(
@@ -75,7 +126,6 @@ class CodeBlockBuilder extends MarkdownElementBuilder {
               ],
             ),
           ),
-          // Горизонтальный скролл для длинных строк кода
           Padding(
             padding: const EdgeInsets.all(14.0),
             child: SingleChildScrollView(
