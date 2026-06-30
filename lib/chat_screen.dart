@@ -5,16 +5,20 @@ import 'dart:convert';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'dart:html' as html;
 import 'widgets/code_block_builder.dart';
+
 class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
   @override
   State<ChatScreen> createState() => _ChatScreenState();
 }
+
 class _ChatScreenState extends State<ChatScreen> {
   final TextEditingController _messageController = TextEditingController();
   final TextEditingController _apiKeyController = TextEditingController();
   final TextEditingController _systemPromptController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+
   late final FocusNode _messageFocusNode = FocusNode(
     onKeyEvent: (node, event) {
       if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
@@ -27,10 +31,16 @@ class _ChatScreenState extends State<ChatScreen> {
       return KeyEventResult.ignored;
     },
   );
+
   double _temperature = 0.7;
   int _maxTokens = 4000;
   bool _isLoading = false;
   bool _autoFocus = true;
+
+  // === Суммаризация ===
+  String _chatSummary = '';
+  int _lastSummaryFailureIndex = -1;
+
   final List<Map<String, String>> _models = [
     {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash:deepinfra'},
     {'name': 'Llama 3.1 8B (Ультра-бюджет)', 'id': 'meta-llama/Llama-3.1-8B-Instruct:cheapest'},
@@ -38,19 +48,64 @@ class _ChatScreenState extends State<ChatScreen> {
     {'name': 'Qwen 3.5 27B (Для кода)', 'id': 'Qwen/Qwen3.5-27B:cheapest'},
     {'name': 'Qwen 3.6 35B MoE (Быстрая)', 'id': 'Qwen/Qwen3.6-35B-A3B:cheapest'},
     {'name': 'Phi-4 (Сверхдешевый интеллект от MS)', 'id': 'microsoft/phi-4:cheapest'},
-    {'name':'Llama 3.1 70B (Красивый Текст)', 'id':'meta-llama/Llama-3.1-70B-Instruct:deepinfra'},
+    {'name': 'Llama 3.1 70B (Красивый Текст)', 'id': 'meta-llama/Llama-3.1-70B-Instruct:deepinfra'},
   ];
+
   late String _selectedModel;
   final List<Map<String, String>> _messages = [];
+
   @override
   void initState() {
     super.initState();
     _selectedModel = _models[0]['id']!;
   }
+
+  Future<bool> _updateChatSummary(List<Map<String, String>> oldMessages) async {
+    final oldChatText = oldMessages.map((m) => '${m['role']}: ${m['content']}').join('\n');
+
+    final summaryPrompt = 'Ты — помощник, который делает краткие выжимки диалогов. '
+        'Кратко перескажи суть этого диалога в 2-4 предложениях, сохранив ключевые факты, имена и темы. '
+        'Отвечай ТОЛЬКО выжимкой, без вступлений.\n\n'
+        'Текущая выжимка предыдущей истории: ${_chatSummary.isEmpty ? "Пусто" : _chatSummary}\n\n'
+        'Новые сообщения для учета:\n$oldChatText';
+
+    try {
+      final response = await http.post(
+        Uri.parse('https://router.huggingface.co/v1/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer ${_apiKeyController.text.trim()}',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': _selectedModel,
+          'temperature': 0.3,
+          'max_tokens': 300,
+          'messages': [
+            {'role': 'user', 'content': summaryPrompt}
+          ],
+        }),
+      ).timeout(const Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(utf8.decode(response.bodyBytes));
+        final newSummary = data['choices'][0]['message']['content'].toString().trim();
+        if (newSummary.isNotEmpty && newSummary.length > 10) {
+          _chatSummary = newSummary;
+          return true;
+        }
+      }
+    } catch (e) {
+      print('Ошибка суммаризации: $e');
+    }
+
+    return false;
+  }
+
   Future<void> _sendMessage() async {
     final text = _messageController.text.trim();
     final apiKey = _apiKeyController.text.trim();
     final systemPrompt = _systemPromptController.text.trim();
+
     if (text.isEmpty) return;
     if (apiKey.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -63,18 +118,55 @@ class _ChatScreenState extends State<ChatScreen> {
       );
       return;
     }
+
     setState(() {
       _messages.add({'role': 'user', 'content': text});
       _messageController.clear();
       _isLoading = true;
     });
+
     _scrollToBottom();
+
+    // === ЛОГИКА СУММАРИЗАЦИИ ===
+    if (_messages.length > 15) {
+      // Проверяем, не было ли недавней неудачи суммаризации
+      final shouldTrySummary = _lastSummaryFailureIndex == -1 ||
+          (_messages.length - _lastSummaryFailureIndex) >= 10;
+
+      if (shouldTrySummary) {
+        final removeCount = _messages.length - 15;
+        final oldMessages = _messages.sublist(0, removeCount);
+
+        final bool success = await _updateChatSummary(oldMessages);
+
+        if (success) {
+          setState(() {
+            _messages.removeRange(0, removeCount);
+            _lastSummaryFailureIndex = -1;
+          });
+        } else {
+          _lastSummaryFailureIndex = _messages.length;
+        }
+      }
+    }
+    // ============================
+
     try {
       final List<Map<String, dynamic>> apiMessages = [];
+
       if (systemPrompt.isNotEmpty) {
         apiMessages.add({'role': 'system', 'content': systemPrompt});
       }
+
+      if (_chatSummary.isNotEmpty) {
+        apiMessages.add({
+          'role': 'system',
+          'content': 'Контекст предыдущих сообщений (суммаризация): $_chatSummary'
+        });
+      }
+
       apiMessages.addAll(_messages.map((m) => {'role': m['role'], 'content': m['content']}).toList());
+
       final response = await http.post(
         Uri.parse('https://router.huggingface.co/v1/chat/completions'),
         headers: {
@@ -88,6 +180,7 @@ class _ChatScreenState extends State<ChatScreen> {
           'messages': apiMessages,
         }),
       );
+
       if (response.statusCode == 200) {
         final data = jsonDecode(utf8.decode(response.bodyBytes));
         final reply = data['choices'][0]['message']['content'].toString();
@@ -109,6 +202,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     }
   }
+
   void _scrollToBottom() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (_scrollController.hasClients) {
@@ -120,6 +214,7 @@ class _ChatScreenState extends State<ChatScreen> {
       }
     });
   }
+
   @override
   void dispose() {
     _apiKeyController.dispose();
@@ -129,6 +224,7 @@ class _ChatScreenState extends State<ChatScreen> {
     _messageFocusNode.dispose();
     super.dispose();
   }
+
   void _openSettings() {
     showModalBottomSheet(
       context: context,
@@ -182,17 +278,6 @@ class _ChatScreenState extends State<ChatScreen> {
                   decoration: const InputDecoration(
                     hintText: 'Введите токен...',
                     prefixIcon: Icon(Icons.key_rounded, size: 20, color: Color(0xFFE9B824)),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text('Системный промпт', style: TextStyle(color: Colors.white70, fontSize: 13)),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _systemPromptController,
-                  maxLines: 3,
-                  decoration: const InputDecoration(
-                    hintText: 'Например: "Ты опытный разработчик..."',
-                    prefixIcon: Icon(Icons.psychology_rounded, size: 20, color: Color(0xFFE9B824)),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -308,6 +393,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -374,6 +460,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
   Widget _buildChatBubble(Map<String, String> msg) {
     final isUser = msg['role'] == 'user';
     return Padding(
@@ -481,38 +568,72 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
   Widget _buildInputPanel() {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 10, 16, 12),
       color: const Color(0xFF0D1B2A),
       child: SafeArea(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Expanded(
-              child: TextField(
-                controller: _messageController,
-                focusNode: _messageFocusNode,
-                minLines: 1,
-                maxLines: 6,
-                keyboardType: TextInputType.multiline,
-                textInputAction: TextInputAction.newline,
-                style: const TextStyle(fontSize: 15),
-                decoration: const InputDecoration(
-                  hintText: 'Задайте вопрос... (Enter отправляет, Shift+Enter переносит)',
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    focusNode: _messageFocusNode,
+                    minLines: 1,
+                    maxLines: 6,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    style: const TextStyle(fontSize: 15),
+                    decoration: const InputDecoration(
+                      hintText: 'Задайте вопрос... (Enter отправляет, Shift+Enter переносит)',
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    ),
+                  ),
                 ),
-              ),
+                const SizedBox(width: 10),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFE9B824),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF0D1B2A), size: 22),
+                    onPressed: _isLoading ? null : _sendMessage,
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(width: 10),
-            Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFFE9B824),
-                shape: BoxShape.circle,
-              ),
-              child: IconButton(
-                icon: const Icon(Icons.arrow_upward_rounded, color: Color(0xFF0D1B2A), size: 22),
-                onPressed: _isLoading ? null : _sendMessage,
+            const SizedBox(height: 10),
+            TextField(
+              controller: _systemPromptController,
+              maxLines: 2,
+              minLines: 1,
+              style: const TextStyle(fontSize: 13, color: Colors.white70),
+              decoration: const InputDecoration(
+                hintText: 'Системный промпт...',
+                hintStyle: TextStyle(color: Colors.white30),
+                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                prefixIcon: Icon(Icons.psychology_rounded, size: 18, color: Color(0xFFE9B824)),
+                isDense: true,
+                filled: true,
+                fillColor: Color(0xFF1B263B),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Color(0xFF2A3F5F)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Color(0xFF2A3F5F)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.all(Radius.circular(12)),
+                  borderSide: BorderSide(color: Color(0xFFE9B824)),
+                ),
               ),
             ),
           ],
@@ -520,6 +641,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
     );
   }
+
   Widget _buildFooter() {
     return Container(
       width: double.infinity,
@@ -530,12 +652,13 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       child: const Center(
         child: Text(
-          'Разработчик: Алексей Агафонов',
+          '2025 год Агафонов Алексей',
           style: TextStyle(color: Colors.white30, fontSize: 11, letterSpacing: 0.6, fontWeight: FontWeight.w400),
         ),
       ),
     );
   }
+
   void _downloadFile(String text, String extension, BuildContext context) {
     try {
       String ext = extension.toLowerCase();
@@ -545,14 +668,17 @@ class _ChatScreenState extends State<ChatScreen> {
       if (ext == 'typescript') ext = 'ts';
       if (ext == 'dart') ext = 'dart';
       if (ext == 'csharp') ext = 'cs';
+
       final filename = 'generated_code.$ext';
       final bytes = utf8.encode(text);
       final blob = html.Blob([bytes], 'text/plain;charset=utf-8');
       final url = html.Url.createObjectUrlFromBlob(blob);
+
       html.AnchorElement(href: url)
         ..setAttribute("download", filename)
         ..click();
       html.Url.revokeObjectUrl(url);
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(behavior: SnackBarBehavior.floating, content: Text('Файл $filename успешно скачан')),
       );
@@ -560,6 +686,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка скачивания: $e')));
     }
   }
+
   void _copyToClipboard(String text, BuildContext context) {
     Clipboard.setData(ClipboardData(text: text));
     ScaffoldMessenger.of(context).showSnackBar(
