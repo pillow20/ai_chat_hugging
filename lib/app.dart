@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'chat_screen.dart';
+import 'screens/chat_screen.dart';
 
 class OpenRouterChatApp extends StatelessWidget {
   const OpenRouterChatApp({super.key});
@@ -20,22 +20,22 @@ class OpenRouterChatApp extends StatelessWidget {
           surface: Color(0xFF1B263B),
           onSurface: Colors.white,
         ),
-        inputDecorationTheme: InputDecorationTheme(
+        inputDecorationTheme: const InputDecorationTheme(
           filled: true,
-          fillColor: const Color(0xFF1B263B),
+          fillColor: Color(0xFF1B263B),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
             borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFF2A3F5F), width: 1),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(color: Color(0xFF2A3F5F), width: 1),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(12),
-            borderSide: const BorderSide(color: Color(0xFFE9B824), width: 1.5),
+            borderRadius: BorderRadius.all(Radius.circular(12)),
+            borderSide: BorderSide(color: Color(0xFFE9B824), width: 1.5),
           ),
-          labelStyle: const TextStyle(color: Colors.grey, fontSize: 14),
+          labelStyle: TextStyle(color: Colors.grey, fontSize: 14),
         ),
       ),
       home: const ChatScreen(),
