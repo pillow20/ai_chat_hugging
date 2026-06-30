@@ -12,13 +12,35 @@ class ChatBubble extends StatelessWidget {
 
   void _downloadFile(String text, String extension, BuildContext context) {
     try {
-      String ext = extension.toLowerCase();
-      if (ext == 'code' || ext == 'text') ext = 'txt';
-      if (ext == 'python') ext = 'py';
-      if (ext == 'javascript') ext = 'js';
-      if (ext == 'typescript') ext = 'ts';
-      if (ext == 'dart') ext = 'dart';
-      if (ext == 'csharp') ext = 'cs';
+      String ext = extension.toLowerCase().trim();
+      
+      final Map<String, String> extensionMap = {
+        'code': 'txt', 'text': 'txt', 'txt': 'txt',
+        'python': 'py', 'py': 'py',
+        'javascript': 'js', 'js': 'js',
+        'typescript': 'ts', 'ts': 'ts',
+        'dart': 'dart',
+        'csharp': 'cs', 'cs': 'cs', 'c#': 'cs',
+        'java': 'java',
+        'cpp': 'cpp', 'c++': 'cpp', 'cxx': 'cpp',
+        'c': 'c',
+        'go': 'go', 'golang': 'go',
+        'html': 'html', 'htm': 'html',
+        'css': 'css',
+        'sql': 'sql',
+        'bash': 'sh', 'shell': 'sh', 'sh': 'sh',
+        'php': 'php',
+        'rust': 'rs', 'rs': 'rs',
+        'ruby': 'rb', 'rb': 'rb',
+        'swift': 'swift',
+        'kotlin': 'kt', 'kt': 'kt',
+        'r': 'r',
+        'json': 'json',
+        'yaml': 'yml', 'yml': 'yml',
+        'xml': 'xml',
+      };
+      
+      ext = extensionMap[ext] ?? ext;
 
       final filename = 'generated_code.$ext';
       final bytes = utf8.encode(text);
@@ -31,10 +53,10 @@ class ChatBubble extends StatelessWidget {
       html.Url.revokeObjectUrl(url);
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(behavior: SnackBarBehavior.floating, content: Text('Файл $filename успешно скачан')),
+        SnackBar(behavior: SnackBarBehavior.floating, content: Text('Файл $filename скачан')),
       );
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка скачивания: $e')));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
 
