@@ -8,6 +8,34 @@ class CodeBlockBuilder extends MarkdownElementBuilder {
 
   CodeBlockBuilder({required this.onDownload, required this.onCopy});
 
+  String _detectLanguage(String code) {
+    final c = code.toLowerCase();
+    
+    if (c.contains('void main(') || c.contains('widget build(') || 
+        c.contains('buildcontext') || c.contains('setstate(')) return 'dart';
+    if (c.contains('def ') || c.contains('import ') || c.contains('print(') || 
+        c.contains('self.') || c.contains('if __name__')) return 'python';
+    if (c.contains('const ') || c.contains('let ') || c.contains('=>') || 
+        c.contains('console.log') || c.contains('document.')) return 'javascript';
+    if (c.contains('<!doctype') || c.contains('<html') || c.contains('<div') || 
+        c.contains('<body')) return 'html';
+    if (c.contains('@media') || RegExp(r'\.[\w-]+\s*\{').hasMatch(code)) return 'css';
+    if (c.contains('public class') || c.contains('public static void main') || 
+        c.contains('system.out.println')) return 'java';
+    if (c.contains('#include') && (c.contains('cout') || c.contains('std::'))) return 'cpp';
+    if (c.contains('#include') && c.contains('printf')) return 'c';
+    if (c.contains('using system') || c.contains('namespace ') || 
+        c.contains('console.writeline')) return 'csharp';
+    if (c.contains('package ') && c.contains('func main')) return 'go';
+    if (RegExp(r'\b(select|insert|update|delete|create table)\b').hasMatch(c)) return 'sql';
+    if (c.startsWith('#!/bin') || c.contains('\$1') || c.contains('echo ')) return 'bash';
+    if (c.contains('<?php')) return 'php';
+    if (c.contains('fn main') && c.contains('println!')) return 'rust';
+    if (code.trim().startsWith('{') || code.trim().startsWith('[')) return 'json';
+    
+    return 'text';
+  }
+
   @override
   Widget? visitElementAfter(md.Element element, TextStyle? preferredStyle) {
     final code = element.textContent.trimRight();
@@ -16,6 +44,8 @@ class CodeBlockBuilder extends MarkdownElementBuilder {
     final cls = element.attributes['class'];
     if (cls != null && cls.startsWith('language-')) {
       lang = cls.substring(9);
+    } else {
+      lang = _detectLanguage(code);
     }
 
     return Container(
