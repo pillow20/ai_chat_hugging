@@ -43,7 +43,7 @@ class _ChatScreenState extends State<ChatScreen> {
   int _lastSummaryFailureIndex = -1;
 
   final List<Map<String, String>> _models = [
-    {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash:deepinfra'},
+    {'name': 'DeepSeek-4V-flash', 'id': 'deepseek-ai/DeepSeek-V4-Flash:free'},
     {'name': 'Llama 3.1 8B (Ультра-бюджет)', 'id': 'meta-llama/Llama-3.1-8B-Instruct:cheapest'},
     {'name': 'Gemma 4 26B (Google Логика)', 'id': 'google/gemma-4-26B-A4B-it:cheapest'},
     {'name': 'Qwen 3.5 27B (Для кода)', 'id': 'Qwen/Qwen3.5-27B:cheapest'},
